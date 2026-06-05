@@ -30,12 +30,50 @@ canvas{
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+const player = {
+    x: 120,
+    y: 345,
+    radius: 15,
+    velocityY: 0,
+    gravityDirection: 1
+};
+
+const GRAVITY = 0.6;
+
+document.addEventListener("keydown", (event) => {
+
+    if(event.code === "Space"){
+        player.gravityDirection *= -1;
+    }
+
+});
+
+function updatePlayer(){
+
+    player.velocityY += GRAVITY * player.gravityDirection;
+    player.y += player.velocityY;
+
+    const floorY = canvas.height - 55;
+    const ceilingY = 55;
+
+    if(player.y > floorY){
+        player.y = floorY;
+        player.velocityY = 0;
+    }
+
+    if(player.y < ceilingY){
+        player.y = ceilingY;
+        player.velocityY = 0;
+    }
+}
+
 function drawBackground(){
-    ctx.fillStyle="#1a1a1a";
+
+    ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    ctx.strokeStyle="white";
-    ctx.lineWidth=4;
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 4;
 
     ctx.beginPath();
     ctx.moveTo(0,40);
@@ -49,38 +87,51 @@ function drawBackground(){
 }
 
 function drawPlayer(){
-    ctx.fillStyle="#00ffcc";
+
+    ctx.fillStyle = "#00ffcc";
 
     ctx.beginPath();
     ctx.arc(
-        120,
-        canvas.height-55,
-        15,
+        player.x,
+        player.y,
+        player.radius,
         0,
-        Math.PI*2
+        Math.PI * 2
     );
     ctx.fill();
 }
 
 function drawTitle(){
-    ctx.fillStyle="white";
-    ctx.font="24px Arial";
-    ctx.textAlign="center";
+
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.textAlign = "center";
 
     ctx.fillText(
         "Gravity Drop",
-        canvas.width/2,
+        canvas.width / 2,
         30
     );
 }
 
 function draw(){
+
     drawBackground();
     drawPlayer();
     drawTitle();
+
 }
 
-draw();
+function gameLoop(){
+
+    updatePlayer();
+    draw();
+
+    requestAnimationFrame(gameLoop);
+
+}
+
+gameLoop();
 
 </script>
 
