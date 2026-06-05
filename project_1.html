@@ -38,25 +38,28 @@ const player = {
     gravityDirection: 1
 };
 
-const GRAVITY = 0.6;
+const BASE_GRAVITY = 0.6;
+let gravityStrength = BASE_GRAVITY;
 
 const obstacles = [];
 
 const OBSTACLE_WIDTH = 40;
 const OBSTACLE_HEIGHT = 90;
-const OBSTACLE_SPEED = 4;
-const SPAWN_INTERVAL = 1200;
 
-let lastSpawnTime = 0;
+const START_OBSTACLE_SPEED = 4;
+const SPEED_INCREASE_RATE = 0.20;
+
+const MAX_OBSTACLE_GAP = 280;
+let distanceSinceLastSpawn = 0;
+
+let obstacleSpeed = START_OBSTACLE_SPEED;
 
 let gameOver = false;
 let survivalTime = 0;
 let startTime = Date.now();
 
 document.addEventListener("keydown", (event) => {
-
     if(event.code === "Space") {
-
         if(gameOver){
             restartGame();
             return;
@@ -64,25 +67,25 @@ document.addEventListener("keydown", (event) => {
 
         player.gravityDirection *= -1;
     }
-
 });
 
 function restartGame(){
-
     obstacles.length = 0;
 
     player.y = canvas.height - 55;
     player.velocityY = 0;
     player.gravityDirection = 1;
 
+    obstacleSpeed = START_OBSTACLE_SPEED;
+    gravityStrength = BASE_GRAVITY;
+    distanceSinceLastSpawn = 0;
+
     gameOver = false;
     survivalTime = 0;
     startTime = Date.now();
-    lastSpawnTime = 0;
 }
 
 function spawnObstacle(){
-
     const spawnOnTop = Math.random() < 0.5;
 
     obstacles.push({
@@ -93,12 +96,10 @@ function spawnObstacle(){
         width: OBSTACLE_WIDTH,
         height: OBSTACLE_HEIGHT
     });
-
 }
 
 function updatePlayer(){
-
-    player.velocityY += GRAVITY * player.gravityDirection;
+    player.velocityY += gravityStrength * player.gravityDirection;
     player.y += player.velocityY;
 
     const floorY = canvas.height - 55;
@@ -115,28 +116,36 @@ function updatePlayer(){
     }
 }
 
-function updateObstacles(timestamp){
+function updateDifficulty(){
+    obstacleSpeed = START_OBSTACLE_SPEED + survivalTime * SPEED_INCREASE_RATE;
 
-    if(timestamp - lastSpawnTime > SPAWN_INTERVAL){
+    gravityStrength = Math.min(
+        BASE_GRAVITY + survivalTime * 0.03,
+        1.1
+    );
+}
+
+function updateObstacles(){
+    updateDifficulty();
+
+    distanceSinceLastSpawn += obstacleSpeed;
+
+    if(distanceSinceLastSpawn >= MAX_OBSTACLE_GAP){
         spawnObstacle();
-        lastSpawnTime = timestamp;
+        distanceSinceLastSpawn = 0;
     }
 
     for(let i = obstacles.length - 1; i >= 0; i--){
-
-        obstacles[i].x -= OBSTACLE_SPEED;
+        obstacles[i].x -= obstacleSpeed;
 
         if(obstacles[i].x + obstacles[i].width < 0){
             obstacles.splice(i,1);
         }
-
     }
 }
 
 function checkCollisions(){
-
     for(const obstacle of obstacles){
-
         const closestX = Math.max(
             obstacle.x,
             Math.min(player.x, obstacle.x + obstacle.width)
@@ -156,16 +165,14 @@ function checkCollisions(){
             gameOver = true;
             return;
         }
-
     }
 }
 
 function updateTimer(){
-    survivalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    survivalTime = Number(((Date.now() - startTime) / 1000).toFixed(1));
 }
 
 function drawBackground(){
-
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -184,7 +191,6 @@ function drawBackground(){
 }
 
 function drawPlayer(){
-
     ctx.fillStyle = "#00ffcc";
 
     ctx.beginPath();
@@ -199,43 +205,64 @@ function drawPlayer(){
 }
 
 function drawObstacles(){
-
     ctx.fillStyle = "#ff4d6d";
 
     for(const obstacle of obstacles){
-
         ctx.fillRect(
             obstacle.x,
             obstacle.y,
             obstacle.width,
             obstacle.height
         );
-
     }
 }
 
 function drawHUD(){
-
     ctx.fillStyle = "white";
-    ctx.font = "22px Arial";
-    ctx.textAlign = "left";
 
+    ctx.textAlign = "left";
+    ctx.font = "22px Arial";
     ctx.fillText(
-        `Time: ${survivalTime}s`,
+        `Time: ${survivalTime.toFixed(1)}s`,
         20,
         30
+    );
+
+    ctx.textAlign = "center";
+    ctx.font = "24px Arial";
+    ctx.fillText(
+        "GRAVITY DROP",
+        canvas.width / 2,
+        30
+    );
+
+    ctx.textAlign = "right";
+    ctx.font = "22px Arial";
+    ctx.fillText(
+        `Speed: ${obstacleSpeed.toFixed(1)}`,
+        canvas.width - 20,
+        30
+    );
+
+    ctx.textAlign = "left";
+    ctx.font = "16px Arial";
+    ctx.fillText(
+        "SPACE = Reverse Gravity",
+        20,
+        canvas.height - 12
+    );
+
+    ctx.textAlign = "right";
+    ctx.fillText(
+        "Avoid Red Obstacles",
+        canvas.width - 20,
+        canvas.height - 12
     );
 }
 
 function drawGameOver(){
-
     ctx.fillStyle = "rgba(0,0,0,0.7)";
-    ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
@@ -249,7 +276,7 @@ function drawGameOver(){
 
     ctx.font = "24px Arial";
     ctx.fillText(
-        `Survived ${survivalTime} seconds`,
+        `Survived ${survivalTime.toFixed(1)} seconds`,
         canvas.width / 2,
         canvas.height / 2 + 10
     );
@@ -262,7 +289,6 @@ function drawGameOver(){
 }
 
 function draw(){
-
     drawBackground();
     drawObstacles();
     drawPlayer();
@@ -273,21 +299,17 @@ function draw(){
     }
 }
 
-function gameLoop(timestamp){
-
+function gameLoop(){
     if(!gameOver){
-
         updatePlayer();
-        updateObstacles(timestamp);
+        updateObstacles();
         checkCollisions();
         updateTimer();
-
     }
 
     draw();
 
     requestAnimationFrame(gameLoop);
-
 }
 
 gameLoop();
