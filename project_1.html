@@ -40,6 +40,15 @@ const player = {
 
 const GRAVITY = 0.6;
 
+const obstacles = [];
+
+const OBSTACLE_WIDTH = 40;
+const OBSTACLE_HEIGHT = 90;
+const OBSTACLE_SPEED = 4;
+const SPAWN_INTERVAL = 1200;
+
+let lastSpawnTime = 0;
+
 document.addEventListener("keydown", (event) => {
 
     if(event.code === "Space"){
@@ -47,6 +56,21 @@ document.addEventListener("keydown", (event) => {
     }
 
 });
+
+function spawnObstacle(){
+
+    const spawnOnTop = Math.random() < 0.5;
+
+    obstacles.push({
+        x: canvas.width,
+        y: spawnOnTop
+            ? 40
+            : canvas.height - 40 - OBSTACLE_HEIGHT,
+        width: OBSTACLE_WIDTH,
+        height: OBSTACLE_HEIGHT
+    });
+
+}
 
 function updatePlayer(){
 
@@ -65,6 +89,25 @@ function updatePlayer(){
         player.y = ceilingY;
         player.velocityY = 0;
     }
+}
+
+function updateObstacles(timestamp){
+
+    if(timestamp - lastSpawnTime > SPAWN_INTERVAL){
+        spawnObstacle();
+        lastSpawnTime = timestamp;
+    }
+
+    for(let i = obstacles.length - 1; i >= 0; i--){
+
+        obstacles[i].x -= OBSTACLE_SPEED;
+
+        if(obstacles[i].x + obstacles[i].width < 0){
+            obstacles.splice(i,1);
+        }
+
+    }
+
 }
 
 function drawBackground(){
@@ -101,6 +144,23 @@ function drawPlayer(){
     ctx.fill();
 }
 
+function drawObstacles(){
+
+    ctx.fillStyle = "#ff4d6d";
+
+    for(const obstacle of obstacles){
+
+        ctx.fillRect(
+            obstacle.x,
+            obstacle.y,
+            obstacle.width,
+            obstacle.height
+        );
+
+    }
+
+}
+
 function drawTitle(){
 
     ctx.fillStyle = "white";
@@ -117,14 +177,16 @@ function drawTitle(){
 function draw(){
 
     drawBackground();
+    drawObstacles();
     drawPlayer();
     drawTitle();
 
 }
 
-function gameLoop(){
+function gameLoop(timestamp){
 
     updatePlayer();
+    updateObstacles(timestamp);
     draw();
 
     requestAnimationFrame(gameLoop);
