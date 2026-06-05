@@ -13,6 +13,7 @@ body{
     justify-content:center;
     align-items:center;
     height:100vh;
+    font-family:Arial, sans-serif;
 }
 
 canvas{
@@ -26,7 +27,6 @@ canvas{
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
-
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -49,13 +49,37 @@ const SPAWN_INTERVAL = 1200;
 
 let lastSpawnTime = 0;
 
+let gameOver = false;
+let survivalTime = 0;
+let startTime = Date.now();
+
 document.addEventListener("keydown", (event) => {
 
-    if(event.code === "Space"){
+    if(event.code === "Space") {
+
+        if(gameOver){
+            restartGame();
+            return;
+        }
+
         player.gravityDirection *= -1;
     }
 
 });
+
+function restartGame(){
+
+    obstacles.length = 0;
+
+    player.y = canvas.height - 55;
+    player.velocityY = 0;
+    player.gravityDirection = 1;
+
+    gameOver = false;
+    survivalTime = 0;
+    startTime = Date.now();
+    lastSpawnTime = 0;
+}
 
 function spawnObstacle(){
 
@@ -107,7 +131,37 @@ function updateObstacles(timestamp){
         }
 
     }
+}
 
+function checkCollisions(){
+
+    for(const obstacle of obstacles){
+
+        const closestX = Math.max(
+            obstacle.x,
+            Math.min(player.x, obstacle.x + obstacle.width)
+        );
+
+        const closestY = Math.max(
+            obstacle.y,
+            Math.min(player.y, obstacle.y + obstacle.height)
+        );
+
+        const dx = player.x - closestX;
+        const dy = player.y - closestY;
+
+        const distanceSquared = dx * dx + dy * dy;
+
+        if(distanceSquared < player.radius * player.radius){
+            gameOver = true;
+            return;
+        }
+
+    }
+}
+
+function updateTimer(){
+    survivalTime = ((Date.now() - startTime) / 1000).toFixed(1);
 }
 
 function drawBackground(){
@@ -158,19 +212,52 @@ function drawObstacles(){
         );
 
     }
-
 }
 
-function drawTitle(){
+function drawHUD(){
 
     ctx.fillStyle = "white";
-    ctx.font = "24px Arial";
-    ctx.textAlign = "center";
+    ctx.font = "22px Arial";
+    ctx.textAlign = "left";
 
     ctx.fillText(
-        "Gravity Drop",
-        canvas.width / 2,
+        `Time: ${survivalTime}s`,
+        20,
         30
+    );
+}
+
+function drawGameOver(){
+
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+
+    ctx.font = "42px Arial";
+    ctx.fillText(
+        "GAME OVER",
+        canvas.width / 2,
+        canvas.height / 2 - 30
+    );
+
+    ctx.font = "24px Arial";
+    ctx.fillText(
+        `Survived ${survivalTime} seconds`,
+        canvas.width / 2,
+        canvas.height / 2 + 10
+    );
+
+    ctx.fillText(
+        "Press SPACE to restart",
+        canvas.width / 2,
+        canvas.height / 2 + 50
     );
 }
 
@@ -179,14 +266,24 @@ function draw(){
     drawBackground();
     drawObstacles();
     drawPlayer();
-    drawTitle();
+    drawHUD();
 
+    if(gameOver){
+        drawGameOver();
+    }
 }
 
 function gameLoop(timestamp){
 
-    updatePlayer();
-    updateObstacles(timestamp);
+    if(!gameOver){
+
+        updatePlayer();
+        updateObstacles(timestamp);
+        checkCollisions();
+        updateTimer();
+
+    }
+
     draw();
 
     requestAnimationFrame(gameLoop);
@@ -194,7 +291,6 @@ function gameLoop(timestamp){
 }
 
 gameLoop();
-
 </script>
 
 </body>
