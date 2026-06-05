@@ -52,6 +52,10 @@ const SPEED_INCREASE_RATE = 0.20;
 const MAX_OBSTACLE_GAP = 280;
 let distanceSinceLastSpawn = 0;
 
+const MAX_SAME_SIDE_OBSTACLES = 3;
+let lastObstacleSide = null;
+let sameSideCount = 0;
+
 let obstacleSpeed = START_OBSTACLE_SPEED;
 
 let gameOver = false;
@@ -80,21 +84,44 @@ function restartGame(){
     gravityStrength = BASE_GRAVITY;
     distanceSinceLastSpawn = 0;
 
+    lastObstacleSide = null;
+    sameSideCount = 0;
+
     gameOver = false;
     survivalTime = 0;
     startTime = Date.now();
 }
 
+function chooseObstacleSide(){
+    let nextSide;
+
+    if(sameSideCount >= MAX_SAME_SIDE_OBSTACLES){
+        nextSide = lastObstacleSide === "top" ? "bottom" : "top";
+    } else {
+        nextSide = Math.random() < 0.5 ? "top" : "bottom";
+    }
+
+    if(nextSide === lastObstacleSide){
+        sameSideCount++;
+    } else {
+        lastObstacleSide = nextSide;
+        sameSideCount = 1;
+    }
+
+    return nextSide;
+}
+
 function spawnObstacle(){
-    const spawnOnTop = Math.random() < 0.5;
+    const side = chooseObstacleSide();
 
     obstacles.push({
         x: canvas.width,
-        y: spawnOnTop
+        y: side === "top"
             ? 40
             : canvas.height - 40 - OBSTACLE_HEIGHT,
         width: OBSTACLE_WIDTH,
-        height: OBSTACLE_HEIGHT
+        height: OBSTACLE_HEIGHT,
+        side: side
     });
 }
 
